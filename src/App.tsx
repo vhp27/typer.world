@@ -1,5 +1,6 @@
 import './App.css'
 import { useState, useRef, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { TypingArea } from './components/TypingArea';
 import { SettingsModal } from './components/SettingsModal';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
@@ -252,6 +253,7 @@ function App() {
                 <SettingsProvider>
                     <SEO />
                     <AppContent />
+                    <Analytics />
                 </SettingsProvider>
             </ErrorBoundary>
         </HelmetProvider>
