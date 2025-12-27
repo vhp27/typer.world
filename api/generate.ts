@@ -5,7 +5,7 @@
 // Last Updated: 2025-12-27
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { kv } from '@vercel/kv';
+import { createClient } from '@vercel/kv';
 
 export const config = {
     runtime: 'edge',
@@ -16,7 +16,11 @@ const BATCH_SIZE = 5;
 
 
 // --- GLOBAL STATE ---
-// We now use Vercel KV (Redis) for persistence across all lambdas.
+// Initialize KV client - supports both Vercel KV and standard Upstash
+const kv = createClient({
+    url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 function getPoolKey(wordCount: number, topic: string = 'general', style: string = 'casual'): string {
     return `typer:pool:${wordCount}:${topic.toLowerCase().trim()}:${style}`;
