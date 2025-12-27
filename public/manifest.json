@@ -1,0 +1,18 @@
+{
+    "name": "Typer.world",
+    "short_name": "Typer",
+    "description": "Improve your typing speed and accuracy with our fast, aesthetic typing test.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#18181b",
+    "theme_color": "#18181b",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "/logo.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}

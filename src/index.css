@@ -1,0 +1,230 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root,
+.theme-midnight {
+  --bg-color: #0a0a0a;
+  --text-color: #d1d0c5;
+  --primary-color: #e2b714;
+  --primary-rgb: 226, 183, 20;
+  --error-color: #ca4754;
+  --subtle-color: #5a5a5a;
+  --correct-color: #d1d0c5;
+  --font-ui: 'Lexend', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+.theme-serika {
+  --bg-color: #323437;
+  --text-color: #e2b714;
+  --primary-color: #e2b714;
+  --primary-rgb: 226, 183, 20;
+  --error-color: #ca4754;
+  --subtle-color: #5a5a5a;
+  --correct-color: #d1d0c5;
+}
+
+.theme-carbon {
+  --bg-color: #1a1a1a;
+  --text-color: #f0f0f0;
+  --primary-color: #00b4d8;
+  --primary-rgb: 0, 180, 216;
+  --error-color: #ff6b6b;
+  --subtle-color: #555555;
+  --correct-color: #f0f0f0;
+}
+
+.theme-cyberpunk {
+  --bg-color: #0a0a0f;
+  --text-color: #f0f0f0;
+  --primary-color: #ff00ff;
+  --primary-rgb: 255, 0, 255;
+  --error-color: #ff3366;
+  --subtle-color: #5a5a6a;
+  --correct-color: #00ffff;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-ui);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  font-family: var(--font-ui);
+  outline: none;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Typing Area Styles */
+.letter {
+  display: inline-block;
+  min-width: 0.55em;
+  color: var(--subtle-color);
+  line-height: 1.6;
+  transition: color 0.1s;
+  position: relative;
+}
+
+.letter.correct {
+  color: var(--correct-color);
+}
+
+.letter.incorrect {
+  color: var(--error-color);
+}
+
+/* Caret */
+#caret {
+  position: absolute;
+  width: 2px;
+  height: 1.4em;
+  background-color: var(--primary-color);
+  transition: transform 0.08s ease-out;
+  will-change: transform;
+  pointer-events: none;
+  z-index: 10;
+  top: 0.08em;
+  left: 0;
+  animation: caretBlink 1s ease-in-out infinite;
+  border-radius: 1px;
+}
+
+@keyframes caretBlink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.word {
+  display: inline-block;
+  margin-right: 0.5em;
+  white-space: nowrap;
+}
+
+#typing-container {
+  position: relative;
+  user-select: none;
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge */
+}
+
+#typing-container::-webkit-scrollbar {
+  display: none;
+  /* Chrome/Safari */
+}
+
+#typing-container:focus {
+  outline: none;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Range slider styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  cursor: pointer;
+  border: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Textarea styling */
+textarea {
+  font-family: var(--font-mono);
+}
+
+textarea:focus {
+  border-color: var(--primary-color) !important;
+}
