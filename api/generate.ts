@@ -57,35 +57,36 @@ export default async function handler(request: Request) {
 
         // 1. CHECK POOL SIZE
         const poolSize = await kv.llen(poolKey);
+        const MAX_POOL_SIZE = 50;
 
-        if (poolSize > 0) {
+        // MODE A: RETRIEVE FROM POOL (If rich enough)
+        if (poolSize >= MAX_POOL_SIZE) {
             // PICK RANDOM ITEM (Non-destructive read)
             const randomIndex = Math.floor(Math.random() * poolSize);
             const cachedText = await kv.lindex(poolKey, randomIndex);
 
             if (cachedText) {
-                console.log(`[KV Pool] Served from cache (Non-destructive). Key: ${poolKey}. Index: ${randomIndex}/${poolSize}`);
+                console.log(`[KV Pool] Served from cache (Rotation Mode). Key: ${poolKey}. Index: ${randomIndex}/${poolSize}`);
                 return successResponse(cachedText as string, poolSize);
             }
         }
 
-        // 2. GENERATE BATCH (If Empty)
-        console.log(`[KV Pool] Cache miss (Pool empty)! Generating batch of ${BATCH_SIZE}...`);
+        // MODE B: GENERATE & GROW (If pool < 50)
+        console.log(`[KV Pool] Pool growing (${poolSize}/${MAX_POOL_SIZE}). Generating batch...`);
         const newTexts = await generateBatch(apiKey, wordCount, topic, style);
 
         // Save to pool
         if (newTexts.length > 0) {
-            // Store ALL texts in the pool (including the one we are about to serve)
-            // This ensures the pool is populated for the next request immediately.
+            // Add new texts to the pool
             await kv.rpush(poolKey, ...newTexts);
 
-            // Set expiry to 1 WEEK (604800 seconds) to reduce costs
+            // Refresh expiry to 1 WEEK
             await kv.expire(poolKey, 604800);
 
-            // Serve the first one (or random one from this batch)
+            // Serve the first one from the valid generation
             const textToServe = newTexts[0];
 
-            return successResponse(textToServe, newTexts.length);
+            return successResponse(textToServe, poolSize + newTexts.length);
         } else {
             throw new Error("Generation produced no valid texts");
         }
