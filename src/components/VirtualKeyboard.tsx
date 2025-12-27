@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { TyperEngine } from '../engine/TyperEngine';
 
 const ROWS = [
     ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
@@ -7,7 +8,7 @@ const ROWS = [
 ];
 
 interface VirtualKeyboardProps {
-    pressedKey: { key: string; status: 'correct' | 'incorrect' | 'neutral' } | null;
+    engine: TyperEngine | null;
     size?: 'small' | 'medium' | 'large';
     style?: 'solid' | 'outline' | 'glass';
 }
@@ -18,12 +19,28 @@ const SIZE_MAP = {
     large: { key: 52, gap: 8, font: 1 }
 };
 
-export const VirtualKeyboard = ({
-    pressedKey,
+export const VirtualKeyboard = React.memo(({
+    engine,
     size = 'medium',
     style = 'solid'
 }: VirtualKeyboardProps) => {
     const sizeConfig = SIZE_MAP[size];
+    const [pressedKey, setPressedKey] = useState<{ key: string; status: 'correct' | 'incorrect' | 'neutral' } | null>(null);
+
+    useEffect(() => {
+        if (!engine) return;
+
+        const handleKeyUpdate = (key: string, status: 'correct' | 'incorrect' | 'neutral') => {
+            setPressedKey({ key, status });
+            setTimeout(() => setPressedKey(null), 100);
+        };
+
+        engine.addKeyListener(handleKeyUpdate);
+
+        return () => {
+            engine.removeKeyListener(handleKeyUpdate);
+        };
+    }, [engine]);
 
     const getKeyStyle = (char: string, isActive: boolean, status?: string) => {
         const base: React.CSSProperties = {
@@ -124,4 +141,4 @@ export const VirtualKeyboard = ({
             </div>
         </div>
     );
-};
+});

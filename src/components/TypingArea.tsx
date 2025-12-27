@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { TyperEngine } from '../engine/TyperEngine';
+import type { TypingStats } from '../types';
 import { generateTextSync, generateMistakePractice, generateText } from '../engine/TextEngine';
 import { VirtualKeyboard } from './VirtualKeyboard';
 import { ResultScreen } from './ResultScreen';
@@ -18,9 +19,8 @@ export const TypingArea = () => {
     const engineRef = useRef<TyperEngine | null>(null);
     const { settings } = useSettings();
 
-    const [stats, setStats] = useState<any>({ wpm: 0, accuracy: 100, timeLeft: null, correct: 0, errors: 0, keyStats: {} });
+    const [stats, setStats] = useState<TypingStats>({ wpm: 0, accuracy: 100, timeLeft: null, correct: 0, errors: 0, keyStats: {} });
     const [isFocused, setIsFocused] = useState(true);
-    const [lastKeyPress, setLastKeyPress] = useState<{ key: string, status: 'correct' | 'incorrect' | 'neutral' } | null>(null);
 
     const [gameState, setGameState] = useState<'idle' | 'playing' | 'finished'>('idle');
     const [showCustomModal, setShowCustomModal] = useState(false);
@@ -151,16 +151,20 @@ export const TypingArea = () => {
     // Initialize engine
     useEffect(() => {
         if (containerRef.current && !engineRef.current) {
-            engineRef.current = new TyperEngine(containerRef.current);
+            const engine = new TyperEngine(containerRef.current);
+            engineRef.current = engine;
 
-            engineRef.current.subscribe((s: any) => {
+            engine.subscribe((s: TypingStats) => {
                 setStats({
                     wpm: s.wpm,
                     accuracy: s.accuracy,
                     timeLeft: s.timeLeft,
                     correct: s.correct,
                     errors: s.errors,
-                    keyStats: s.keyStats || {}
+                    keyStats: s.keyStats || {},
+                    finished: s.finished,
+                    paused: s.paused,
+                    timeElapsed: s.timeElapsed
                 });
 
                 if (s.finished) {
@@ -171,10 +175,10 @@ export const TypingArea = () => {
                         SoundManager.playSuccess();
                     }
                 }
-            }, (key, status) => {
-                setLastKeyPress({ key, status });
-                setTimeout(() => setLastKeyPress(null), 100);
+            });
 
+            // Add sound listener separately
+            engine.addKeyListener((_key, status) => {
                 if (settings.soundEnabled) {
                     if (status === 'incorrect') {
                         SoundManager.playError();
@@ -408,7 +412,7 @@ export const TypingArea = () => {
                         {showTimer && stats.timeLeft !== null && (
                             <div style={{
                                 fontSize: '2.5rem',
-                                color: stats.timeLeft < 10 ? 'var(--error-color)' : 'var(--primary-color)',
+                                color: (stats.timeLeft ?? 0) < 10 ? 'var(--error-color)' : 'var(--primary-color)',
                                 fontWeight: 'bold',
                                 fontFamily: 'var(--font-mono)',
                                 minWidth: '80px',
@@ -449,6 +453,9 @@ export const TypingArea = () => {
                         id="typing-container"
                         ref={containerRef}
                         tabIndex={0}
+                        role="textbox"
+                        aria-label="Typing test area"
+                        aria-multiline="true"
                         style={{
                             fontSize: '1.6rem',
                             lineHeight: '1.7',
@@ -507,7 +514,7 @@ export const TypingArea = () => {
                 {/* Virtual Keyboard */}
                 {settings.showVirtualKeyboard && (
                     <VirtualKeyboard
-                        pressedKey={lastKeyPress}
+                        engine={engineRef.current}
                         size={settings.keyboardSize}
                         style={settings.keyboardStyle}
                     />

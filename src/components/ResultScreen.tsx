@@ -1,16 +1,9 @@
-import confetti from 'canvas-confetti';
 import { useEffect, useMemo } from 'react';
 import { Trophy, Zap, Sparkles, ThumbsUp, Target, RotateCcw, ArrowRight, Crosshair } from 'lucide-react';
+import type { TypingStats } from '../types';
 
 interface ResultScreenProps {
-    stats: {
-        wpm: number;
-        accuracy: number;
-        correct: number;
-        errors: number;
-        keyStats?: Record<string, any>;
-        timeElapsed?: number; // seconds
-    };
+    stats: TypingStats;
     onRestart: () => void;
     onPracticeMistakes?: () => void;
 }
@@ -30,11 +23,15 @@ export const ResultScreen = ({ stats, onRestart, onPracticeMistakes }: ResultScr
     useEffect(() => {
         try {
             const intensity = Math.min(150, Math.max(50, stats.wpm));
-            confetti({
-                particleCount: intensity,
-                spread: 80,
-                origin: { y: 0.5 },
-                colors: ['#e2b714', '#d1d0c5', '#00b4d8', '#ff00ff', '#00ff88']
+            // Lazy load confetti
+            import('canvas-confetti').then((module) => {
+                const confetti = module.default;
+                confetti({
+                    particleCount: intensity,
+                    spread: 80,
+                    origin: { y: 0.5 },
+                    colors: ['#e2b714', '#d1d0c5', '#00b4d8', '#ff00ff', '#00ff88']
+                });
             });
         } catch (e) {
             // Confetti failed to load or execute - non-critical

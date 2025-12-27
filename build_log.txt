@@ -1,0 +1,8 @@
+﻿
+> typer.world@0.0.0 build
+> tsc -b && vite build
+
+src/components/ResultScreen.tsx(1,30): error TS6133: 'useState' is declared but its value is never read.
+src/components/TypingArea.tsx(180,47): error TS6133: 'key' is declared but its value is never read.
+src/components/VirtualKeyboard.tsx(2,29): error TS2307: Cannot find module '../utils/TyperEngine' or its corresponding type declarations.
+src/engine/TyperEngine.ts(1,15): error TS6196: 'TypingStats' is declared but never used.

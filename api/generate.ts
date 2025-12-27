@@ -5,6 +5,7 @@
 // Last Updated: 2025-12-27
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { kv } from '@vercel/kv';
 
 export const config = {
     runtime: 'edge',
@@ -15,16 +16,10 @@ const BATCH_SIZE = 5;
 
 
 // --- GLOBAL STATE ---
-// This map persists across requests on a "Warm" lambda instance.
-// In 'vercel dev', this clears on file change, but persists during runtime.
-interface TextPool {
-    items: string[];
-    timestamp: number;
-}
-const serverPools = new Map<string, TextPool>();
+// We now use Vercel KV (Redis) for persistence across all lambdas.
 
 function getPoolKey(wordCount: number, topic: string = 'general', style: string = 'casual'): string {
-    return `${wordCount}-${topic.toLowerCase().trim()}-${style}`;
+    return `typer:pool:${wordCount}:${topic.toLowerCase().trim()}:${style}`;
 }
 
 // Model Priority
@@ -47,31 +42,39 @@ export default async function handler(request: Request) {
         const { wordCount = 50, topic, style = 'casual' } = body;
         const poolKey = getPoolKey(wordCount, topic, style);
 
-        // 1. Initialize logic
-        if (!serverPools.has(poolKey)) {
-            serverPools.set(poolKey, { items: [], timestamp: Date.now() });
-        }
-        const pool = serverPools.get(poolKey)!;
+        // 1. CHECK POOL (POP from Redis List)
+        // LPOP returns the first element or null
+        const cachedText = await kv.lpop(poolKey);
 
-        // 2. CHECK POOL
-        if (pool.items.length > 0) {
-            const text = pool.items.shift(); // FIFO
-            console.log(`[Server Pool] Served from memory. Remaining: ${pool.items.length}`);
-            return successResponse(text!, pool.items.length);
+        if (cachedText) {
+            // Check remaining count asynchronously for internal metrics if needed, 
+            // but for response speed we can just return what we have.
+            // Let's get generic length to inform frontend.
+            const remaining = await kv.llen(poolKey);
+            console.log(`[KV Pool] Served from cache. Key: ${poolKey}. Remaining: ${remaining}`);
+            return successResponse(cachedText as string, remaining);
         }
 
-        // 3. GENERATE BATCH (If Empty)
-        console.log(`[Server Pool] Empty! Generating batch of ${BATCH_SIZE}...`);
+        // 2. GENERATE BATCH (If Empty)
+        console.log(`[KV Pool] Cache miss! Generating batch of ${BATCH_SIZE}...`);
         const newTexts = await generateBatch(apiKey, wordCount, topic, style);
 
-        // Save to pool
-        pool.items.push(...newTexts);
-        pool.timestamp = Date.now();
+        // Save to pool (RPUSH to add to right/tail)
+        if (newTexts.length > 0) {
+            // First item serves the current request
+            const textToServe = newTexts.shift();
 
-        // Serve one
-        const text = pool.items.shift();
+            // Push the rest to Redis
+            if (newTexts.length > 0) {
+                await kv.rpush(poolKey, ...newTexts);
+                // Set expiry (e.g., 24 hours) to prevent stale data buildup
+                await kv.expire(poolKey, 86400);
+            }
 
-        return successResponse(text || "Error", pool.items.length);
+            return successResponse(textToServe!, newTexts.length);
+        } else {
+            throw new Error("Generation produced no valid texts");
+        }
 
     } catch (e: any) {
         console.error('[API Error]', e);

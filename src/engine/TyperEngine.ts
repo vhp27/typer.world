@@ -1,22 +1,6 @@
-export interface KeyStat {
-    total: number;
-    errors: number;
-    speedSum: number;
-    count: number;
-}
+import type { StatsCallback, KeyCallback, KeyStat } from '../types';
 
-export type StatsCallback = (stats: {
-    wpm: number;
-    accuracy: number;
-    correct: number;
-    errors: number;
-    timeLeft?: number | null;
-    keyStats?: Record<string, KeyStat>;
-    finished?: boolean;
-    paused?: boolean;
-}) => void;
-
-export type KeyCallback = (key: string, status: 'correct' | 'incorrect' | 'neutral') => void;
+export type { StatsCallback, KeyCallback, KeyStat };
 
 interface CharNode {
     dom: HTMLElement;
@@ -33,7 +17,7 @@ export class TyperEngine {
     private correct: number = 0;
     private caret: HTMLElement;
     private onStatsUpdate: StatsCallback | null = null;
-    private onKeyUpdate: KeyCallback | null = null;
+    private onKeyUpdate: KeyCallback[] = [];
     private isActive: boolean = false;
     private timeLimit: number = 0;
     private wordLimit: number = 0;
@@ -56,9 +40,16 @@ export class TyperEngine {
         this.caret.id = 'caret';
     }
 
-    public subscribe(statsCallback: StatsCallback, keyCallback?: KeyCallback) {
+    public subscribe(statsCallback: StatsCallback) {
         this.onStatsUpdate = statsCallback;
-        if (keyCallback) this.onKeyUpdate = keyCallback;
+    }
+
+    public addKeyListener(callback: KeyCallback) {
+        this.onKeyUpdate.push(callback);
+    }
+
+    public removeKeyListener(callback: KeyCallback) {
+        this.onKeyUpdate = this.onKeyUpdate.filter(cb => cb !== callback);
     }
 
     public setTimeLimit(seconds: number) {
@@ -192,7 +183,7 @@ export class TyperEngine {
                 node.status = 'correct';
                 node.dom.classList.add('correct');
                 this.correct++;
-                this.onKeyUpdate?.(key, 'correct');
+                this.onKeyUpdate.forEach(cb => cb(key, 'correct'));
 
                 // Track word completion
                 if (key === ' ') {
@@ -208,7 +199,7 @@ export class TyperEngine {
                     this.correct++;
                     this.errors++;
                     this.keyStats[expectedChar].errors++;
-                    this.onKeyUpdate?.(key, 'incorrect');
+                    this.onKeyUpdate.forEach(cb => cb(key, 'incorrect'));
                     if (node.char === ' ') {
                         this.wordsTyped++;
                     }
@@ -222,7 +213,7 @@ export class TyperEngine {
                         this.errors++;
                         this.keyStats[expectedChar].errors++;
                     }
-                    this.onKeyUpdate?.(key, 'incorrect');
+                    this.onKeyUpdate.forEach(cb => cb(key, 'incorrect'));
                     // Don't increment currentIndex - cursor stays
                 } else {
                     // Normal behavior - mark wrong and advance
@@ -230,7 +221,7 @@ export class TyperEngine {
                     node.dom.classList.add('incorrect');
                     this.errors++;
                     this.keyStats[expectedChar].errors++;
-                    this.onKeyUpdate?.(key, 'incorrect');
+                    this.onKeyUpdate.forEach(cb => cb(key, 'incorrect'));
                     this.currentIndex++;
                 }
             }
