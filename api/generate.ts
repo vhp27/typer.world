@@ -55,36 +55,37 @@ export default async function handler(request: Request) {
         const { wordCount = 50, topic, style = 'casual' } = body;
         const poolKey = getPoolKey(wordCount, topic, style);
 
-        // 1. CHECK POOL (POP from Redis List)
-        // LPOP returns the first element or null
-        const cachedText = await kv.lpop(poolKey);
+        // 1. CHECK POOL SIZE
+        const poolSize = await kv.llen(poolKey);
 
-        if (cachedText) {
-            // Check remaining count asynchronously for internal metrics if needed, 
-            // but for response speed we can just return what we have.
-            // Let's get generic length to inform frontend.
-            const remaining = await kv.llen(poolKey);
-            console.log(`[KV Pool] Served from cache. Key: ${poolKey}. Remaining: ${remaining}`);
-            return successResponse(cachedText as string, remaining);
+        if (poolSize > 0) {
+            // PICK RANDOM ITEM (Non-destructive read)
+            const randomIndex = Math.floor(Math.random() * poolSize);
+            const cachedText = await kv.lindex(poolKey, randomIndex);
+
+            if (cachedText) {
+                console.log(`[KV Pool] Served from cache (Non-destructive). Key: ${poolKey}. Index: ${randomIndex}/${poolSize}`);
+                return successResponse(cachedText as string, poolSize);
+            }
         }
 
         // 2. GENERATE BATCH (If Empty)
-        console.log(`[KV Pool] Cache miss! Generating batch of ${BATCH_SIZE}...`);
+        console.log(`[KV Pool] Cache miss (Pool empty)! Generating batch of ${BATCH_SIZE}...`);
         const newTexts = await generateBatch(apiKey, wordCount, topic, style);
 
-        // Save to pool (RPUSH to add to right/tail)
+        // Save to pool
         if (newTexts.length > 0) {
-            // First item serves the current request
-            const textToServe = newTexts.shift();
+            // Store ALL texts in the pool (including the one we are about to serve)
+            // This ensures the pool is populated for the next request immediately.
+            await kv.rpush(poolKey, ...newTexts);
 
-            // Push the rest to Redis
-            if (newTexts.length > 0) {
-                await kv.rpush(poolKey, ...newTexts);
-                // Set expiry (e.g., 24 hours) to prevent stale data buildup
-                await kv.expire(poolKey, 86400);
-            }
+            // Set expiry to 1 WEEK (604800 seconds) to reduce costs
+            await kv.expire(poolKey, 604800);
 
-            return successResponse(textToServe!, newTexts.length);
+            // Serve the first one (or random one from this batch)
+            const textToServe = newTexts[0];
+
+            return successResponse(textToServe, newTexts.length);
         } else {
             throw new Error("Generation produced no valid texts");
         }
