@@ -16,8 +16,8 @@ export interface AIGeneratorOptions {
  */
 export const isAIAvailable = async (): Promise<boolean> => {
     try {
-        const response = await fetch('/api/generate', { method: 'HEAD' });
-        return response.ok || response.status === 405;
+        const response = await fetch('/api/generate', { method: 'GET' });
+        return response.ok;
     } catch {
         console.warn('AI endpoint unavailable.');
         return false;

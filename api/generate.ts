@@ -32,11 +32,20 @@ const FALLBACK_MODEL = 'gemma-3-12b-it';
 
 // --- GENERATION LOGIC ---
 export default async function handler(request: Request) {
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    // Health/Availability Check
+    if (request.method === 'GET') {
+        if (!apiKey) {
+            return new Response(JSON.stringify({ error: 'AI service not configured' }), { status: 503 });
+        }
+        return new Response(JSON.stringify({ status: 'available' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+
     if (request.method !== 'POST') {
         return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
         return new Response(JSON.stringify({ error: 'AI service not configured' }), { status: 503 });
     }
